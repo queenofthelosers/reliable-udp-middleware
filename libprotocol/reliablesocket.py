@@ -1,4 +1,5 @@
 import socket
+import pickle 
 
 class ReliableSocket:
     def __init__(self, sock=None,ip="127.0.0.1",port=20001, timeout = 5):
@@ -12,15 +13,17 @@ class ReliableSocket:
     def connect(self, host, port):
         self.sock.connect((host, port))
 
-    def mysend(self, msg):
-        totalsent = 0
-        while totalsent < MSGLEN:
-            sent = self.sock.send(msg[totalsent:])
-            if sent == 0:
-                raise RuntimeError("socket connection broken")
-            totalsent = totalsent + sent
+    def reliableSend(self, payload,address):
+        payload = pickle.dumps(payload)
+        self.sock.sendto(payload, address)
+        # totalsent = 0
+        # while totalsent < MSGLEN:
+        #     sent = self.sock.send(msg[totalsent:])
+        #     if sent == 0:
+        #         raise RuntimeError("socket connection broken")
+        #     totalsent = totalsent + sent
 
-    def myreceive(self):
+    def reliableReceive(self):
         chunks = []
         bytes_recd = 0
         while bytes_recd < MSGLEN:

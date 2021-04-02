@@ -16,7 +16,6 @@ print("UDP server up and listening")
 rs = ReliableServer()
 
 
-time.sleep(10)
 
 while(True):
     rs.est_connection(serverSocket)
