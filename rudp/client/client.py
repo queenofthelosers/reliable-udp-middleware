@@ -1,15 +1,15 @@
 import sys
 import os
-sys.path.append('../')
-from protocol_files.rudp_copy_protocol import RUDP
 
+sys.path.append("../")
+from protocol_files.rudp_copy_protocol import RUDP
 
 
 def chunks(lst, n):
     "Yield successive n-sized chunks from lst"
     list = []
     for i in range(0, len(lst), n):
-        end = min(i+n, len(lst))
+        end = min(i + n, len(lst))
         list.append(lst[i:end])
     return list
 
@@ -30,4 +30,4 @@ with open(filename, "rb") as f:
     for chunk in list1:
         print("chunk from client :", chunk)
         r.send(chunk)
-
+# r.disconnect()
