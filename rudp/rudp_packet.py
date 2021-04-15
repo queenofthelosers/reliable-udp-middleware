@@ -15,13 +15,14 @@ import hashlib
 import pickle 
 
 class Packet :
-    def __init__(self,control_bits = {"SYN":0, "ACK":0, "ACKNUM":0,"FIN":0,"CHK":0,"KAL":1}, seqNum=0, data = ""):
+    def __init__(self,control_bits = {"SYN":0, "ACK":0, "ACKNUM":0,"FIN":0,"CHK":0,"KAL":1,"NAK":1}, seqNum=0, data = ""):
             
         self.SYN = control_bits["SYN"]
         self.ACK = control_bits["ACK"]
         self.FIN = control_bits["FIN"]
         self.KAL = control_bits["KAL"]
         self.CHK = control_bits["CHK"]
+        self.NAK = control_bits["NAK"]
         self.ACKNUM = control_bits["ACKNUM"]
         self.seqNum = seqNum
         self.data = data
@@ -35,6 +36,7 @@ class Packet :
             "FIN":self.FIN,
             "CHK":self.CHK,
             "KAL":self.KAL,
+            "NAK":self.NAK,
             "seqNum" : self.seqNum,
             "data" : self.data,
             "checksum" : self.checksum
