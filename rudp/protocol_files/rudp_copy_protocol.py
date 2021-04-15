@@ -42,7 +42,7 @@ class RUDP:
         self.PKTSZ = 1024
         self.WINDOWSZ = 100000
         self.TIMEOUT = 10
-        self.KAL_TIMEOUT = 20
+        self.KAL_TIMEOUT = 500
         self.transmit_lock = Lock()
         self.send_lock = Lock()
         self.receive_lock = Lock()

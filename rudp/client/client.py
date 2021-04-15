@@ -25,9 +25,9 @@ r.listen()
 r.send(data)
 with open(filename, "rb") as f:
     contents = f.read()
-    print(contents)
+    # print(contents)
     list1 = chunks(contents, 2048)
     for chunk in list1:
-        print("chunk from client :", chunk)
+        # print("chunk from client :", chunk)
         r.send(chunk)
 # r.disconnect()
