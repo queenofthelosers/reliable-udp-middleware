@@ -7,7 +7,7 @@ import hashlib
 from copy import deepcopy
 from collections.abc import Hashable
 from threading import Thread, Lock
-from rudp_packet import Packet
+from .rudp_packet import Packet
 import sys
 '''
 PACKET STRUCTURE
@@ -36,11 +36,11 @@ class RUDP:
         self.expiry_timestamp = 0
         self.is_connected = False
         self.recv_map = {}
-        self.BUFFSZ = 1050
+        self.BUFFSZ = 4096
         self.PKTSZ = 1024
-        self.WINDOWSZ = 1024
-        self.TIMEOUT = 3
-        self.KAL_TIMEOUT = 8
+        self.WINDOWSZ = 100000
+        self.TIMEOUT = 10
+        self.KAL_TIMEOUT = 45
         self.transmit_lock = Lock()
         self.send_lock = Lock()
         self.receive_lock = Lock()
@@ -49,6 +49,10 @@ class RUDP:
         self.BLOCKING_TIME = 0.00005
         self.latest_packet_time = time.time()
         self.kal_count=0
+        self.kal_lock = Lock()
+        self.listening_thread = 0
+        self.kal_thread = 0
+        self.retransmission_thread = 0
 
     def initialize_socket(self, hostname, port , isServer = True):
         sockfd = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -75,11 +79,16 @@ class RUDP:
     def keep_alive(self):
         
         while True:
-            if (time.time() - self.latest_packet_time >=self.KAL_TIMEOUT):
-                self.kal_count = self.kal_count+1 #increment kal count value for every kal packet sent
+            if (time.time() - self.latest_packet_time >=self.KAL_TIMEOUT and len(self.recv_window)==0):
+                self.kal_lock.acquire()
+                try:
+                    self.kal_count = self.kal_count+1 #increment kal count value for every kal packet sent
+                finally:
+                    self.kal_lock.release()
                 print("The kal count is", self.kal_count)
                 if (self.kal_count>=2): #threshold value
                     self.disconnect()
+                    break
                     
                 else:
                     packet = Packet(control_bits = {"SYN":0, "ACK":0, "ACKNUM":0,"FIN":0,"CHK":0,"KAL":1,"NAK":0}, seqNum=0, data = "")
@@ -106,8 +115,12 @@ class RUDP:
         return self.curr_seq
 
     def disconnect(self):
+        print("The connection is being closed...")
         self.is_connected = False
         self.expiry_timestamp = time.time()
+        self.listening_thread.join()
+        self.retransmission_thread.join()
+        self.kal_thread.join()
         self.sock.close()
         sys.exit()
 
@@ -115,13 +128,13 @@ class RUDP:
         if (self.is_connected == False):
             raise Exception("Peer not connected")
 
-        listening_thread = Thread(target=self.listen_helper)
-        retransmission_thread = Thread(target=self.retransmit)
-        kal_thread = Thread(target=self.keep_alive)
+        self.listening_thread = Thread(target=self.listen_helper)
+        self.retransmission_thread = Thread(target=self.retransmit)
+        self.kal_thread = Thread(target=self.keep_alive)
         
-        listening_thread.start()
-        retransmission_thread.start()
-        kal_thread.start()
+        self.listening_thread.start()
+        self.retransmission_thread.start()
+        self.kal_thread.start()
 
     def listen_helper(self):
         '''
@@ -150,7 +163,11 @@ class RUDP:
             print("Inside RUDP : Currently received :",data_received) #printing the data received
 
             if(data_received["ACK"]==1):
-                self.kal_count=0 #set kal_count because packet is not a KAL packet
+                self.kal_lock.acquire()
+                try:
+                    self.kal_count=0 #set kal_count because packet is not a KAL packet
+                finally:
+                    self.kal_lock.release()
                 print("received ACK for : ", data_received["seqNum"])
                 print("# packets in buffer: ", len(self.send_window))
                 ack_count += 1
@@ -175,7 +192,11 @@ class RUDP:
                     finally:
                         self.transmit_lock.release()
             elif(data_received["NAK"]==1):
-                self.kal_count=0 #set kal_count because packet is not a KAL packet
+                self.kal_lock.acquire()
+                try:
+                    self.kal_count=0 #set kal_count because packet is not a KAL packet
+                finally:
+                    self.kal_lock.release()
                 for send_window_item in self.send_window:
                     if(send_window_item["packet"].seqNum == data_received["seqNum"]):
                         self.write_to_sock(send_window_item["packet"],is_retransmit=True)
@@ -183,7 +204,12 @@ class RUDP:
             elif(data_received["KAL"]==1):
                 continue
             else:
-                self.kal_count=0 #set kal_count because packet is not a KAL packet
+                self.kal_lock.acquire()
+                try:
+                    self.kal_count=0 #set kal_count because packet is not a KAL packet
+                finally:
+                    self.kal_lock.release()
+                
                 if(data_received["seqNum"]>=(self.delivery_seq + (0.9 * self.WINDOWSZ ))):
                     continue
                 data_hash = data_received["checksum"]
