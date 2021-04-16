@@ -38,11 +38,11 @@ class RUDP:
         self.expiry_timestamp = 0
         self.is_connected = False
         self.recv_map = {}
-        self.BUFFSZ = 4096
-        self.PKTSZ = 1024
+        self.BUFFSZ = 5000
+        self.PKTSZ = 4096
         self.WINDOWSZ = 100000
-        self.TIMEOUT = 10
-        self.KAL_TIMEOUT = 15
+        self.TIMEOUT = 15
+        self.KAL_TIMEOUT = 20
         self.transmit_lock = Lock()
         self.send_lock = Lock()
         self.receive_lock = Lock()
