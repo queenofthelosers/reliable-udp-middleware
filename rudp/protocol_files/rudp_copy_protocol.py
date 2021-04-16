@@ -55,6 +55,7 @@ class RUDP:
         self.listening_thread = 0
         self.kal_thread = 0
         self.retransmission_thread = 0
+        self.is_conn_est = False
 
     def initialize_socket(self, hostname, port, isServer=True):
         sockfd = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -121,6 +122,7 @@ class RUDP:
             self.curr_seq = self.curr_seq + 1
         finally:
             self.seq_num_lock.release()
+        print("Seq num", self.curr_seq)
         return self.curr_seq
 
     def disconnect(self):
@@ -150,6 +152,15 @@ class RUDP:
         # self.kal_thread.join()
         # self.disconnect()
 
+    def establish_conn(self):
+        packet = Packet(
+                        control_bits={"SYN": 1, "ACK": 0, "ACKNUM": self.curr_seq, "FIN": 0, "CHK": 0, "KAL": 0, "NAK": 0},
+                        seqNum=self.curr_seq,
+                        data="",
+                    )
+        self.write_to_sock(packet)
+        pass
+    
     def listen_helper(self):
         """
         recv_window.append((seq_num, packet.data))
@@ -178,14 +189,23 @@ class RUDP:
             self.latest_packet_time = time.time()
 
             print("Inside RUDP : Currently received :", data_received["seqNum"])  # printing the data received
+            if data_received["SYN"]==1:
+                if data_received["ACK"]==1:
+                   print("Received SYN-ACK packet, Established connection")
+                   self.is_conn_est = True
+                else:
+                    print("Received SYN packet")
 
-            if data_received["ACK"] == 1:
+            if data_received["ACK"] == 1 and data_received["SYN"]==0:
                 self.kal_lock.acquire()
                 try:
                     self.kal_count = 0  # set kal_count because packet is not a KAL packet
                 finally:
                     self.kal_lock.release()
                 print("received ACK for : ", data_received["seqNum"])
+                if(data_received["seqNum"] == 0):
+                    print("Establshed Connection")
+                    self.is_conn_est = True
                 print("# packets in buffer: ", len(self.send_window))
                 ack_count += 1
                 ack_map.add(data_received["ACKNUM"])
@@ -222,6 +242,7 @@ class RUDP:
                         continue
             elif data_received["KAL"] == 1:
                 continue
+            
             else:
                 self.kal_lock.acquire()
                 try:
@@ -244,11 +265,11 @@ class RUDP:
                     self.write_to_sock(packet)
                     print("Inconsistent data")
                     continue
-                if (len(self.recv_window) < self.WINDOWSZ) or self.recv_map.get(data_received["seqNum"]) != None:
-                    print("sending ack for :", data_received["seqNum"])
+                if ((len(self.recv_window) < self.WINDOWSZ) or self.recv_map.get(data_received["seqNum"]) != None):
+                    # print("sending ack for :", data_received["seqNum"])
                     s = data_received["seqNum"]
                     packet = Packet(
-                        control_bits={"SYN": 0, "ACK": 1, "ACKNUM": s, "FIN": 0, "CHK": 0, "KAL": 0, "NAK": 0},
+                        control_bits={"SYN": 1 if (data_received["SYN"] == 1 and data_received["ACK"] == 0) else 0, "ACK": 1, "ACKNUM": s, "FIN": 0, "CHK": 1 if (data_received["SYN"] == 1 and data_received["ACK"] == 0) else 0, "KAL": 0, "NAK": 0},
                         seqNum=s,
                         data="",
                     )
@@ -265,13 +286,18 @@ class RUDP:
         if len(self.recv_window) > 0:
             data = min(self.recv_window)
             # print(data[0])
-            if data[0] == self.delivery_seq:
-                print("packet to application: ", self.delivery_seq)
-                with self.delivery_seq_lock:
-                    self.delivery_seq += 1
+            if data[0] == self.delivery_seq or data[0] == 0:
+                print("packet to application: ", data[0])
+                if(data[0]!=0):
+                    with self.delivery_seq_lock:
+                        self.delivery_seq += 1
                 self.recv_window.remove(data)
                 # removing header information before forwarding data to application
-                return data[1]
+                if(data[0] == 0):
+                    print("reading from sock")
+                    return None
+                else:
+                    return data[1]
             else:
                 return None
         else:
