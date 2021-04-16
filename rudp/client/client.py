@@ -1,7 +1,6 @@
 import sys
 import os
 
-sys.path.append("../")
 from protocol_files.rudp_copy_protocol import RUDP
 
 
@@ -13,8 +12,8 @@ def chunks(lst, n):
         list.append(lst[i:end])
     return list
 
-
-filename = input("Enter Filename: ")
+print("im in client")
+filename = sys.argv[1]
 filesize = os.path.getsize(filename)
 data = (filename, filesize)
 
