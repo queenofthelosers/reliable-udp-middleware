@@ -41,7 +41,7 @@ class RUDP:
         self.BUFFSZ = 5000
         self.PKTSZ = 4096
         self.WINDOWSZ = 100000
-        self.TIMEOUT = 15
+        self.TIMEOUT = 1
         self.KAL_TIMEOUT = 20
         self.transmit_lock = Lock()
         self.send_lock = Lock()
@@ -154,11 +154,12 @@ class RUDP:
 
     def establish_conn(self):
         packet = Packet(
-                        control_bits={"SYN": 1, "ACK": 0, "ACKNUM": self.curr_seq, "FIN": 0, "CHK": 0, "KAL": 0, "NAK": 0},
+                        control_bits={"SYN": 1, "ACK": 0, "ACKNUM": self.curr_seq, "FIN": 0, "CHK": 1, "KAL": 0, "NAK": 0},
                         seqNum=self.curr_seq,
                         data="",
                     )
         self.write_to_sock(packet)
+        print("Sent Syn")
         pass
     
     def listen_helper(self):
