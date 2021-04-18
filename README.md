@@ -1,6 +1,6 @@
 ﻿# Reliable UDP Middleware
 
-A simple application layer middleware protocol written in Python that implements reliable communication over UDP. The implementation of the protocol has been tested using a simple file transfer client and server application that supports a variety of file formats. The Netem tool was used to simulate various network conditions and the performance of the protocol was evaluated.
+A simple application layer middleware protocol written in Python that implements reliable communication over UDP. The implementation of the protocol has been tested using a simple file transfer client and server application that support a variety of file formats. The Netem tool was used to simulate various network conditions and the performance of the protocol was evaluated.
 
 
 
