@@ -1,5 +1,4 @@
 #!/bin/bash
-
 for i in {10..90..10}
 do
    tc qdisc add dev lo root netem loss $i%

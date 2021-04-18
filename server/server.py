@@ -30,4 +30,4 @@ with open(filename, "rb") as f:
     for chunk in list1:
         # print("chunk from client :", chunk)
         r.send(chunk)
-r.disconnect()
+# r.disconnect()
