@@ -1,3 +1,8 @@
+#Team Members
+#Shubh Deep 2018A7PS0162H
+#Shivang Singh 2018A7PS0115H
+#Nishit Chouhan 2018A7PS0446H
+#Deepak George 2018A7PS0244H
 import socket
 import pickle
 import time
@@ -41,7 +46,7 @@ class RUDP:
         self.BUFFSZ = 5000
         self.PKTSZ = 4096
         self.WINDOWSZ = 100000
-        self.TIMEOUT = 1
+        self.TIMEOUT = 5
         self.KAL_TIMEOUT = 20
         self.transmit_lock = Lock()
         self.send_lock = Lock()
@@ -105,11 +110,6 @@ class RUDP:
                     )
                     self.write_to_sock(packet)
 
-        # while True:
-        #     time.sleep(self.TIMEOUT)
-        #     tic = time.time() - self.send_window[-1]["time"]
-        #     if(tic > self.KAL_TIMEOUT):
-        #         self.disconnect()
 
     def connect_sock(self, hostname, port):
         self.sock.connect((hostname, port))
@@ -149,8 +149,7 @@ class RUDP:
         self.listening_thread.start()
         self.retransmission_thread.start()
         self.kal_thread.start()
-        # self.kal_thread.join()
-        # self.disconnect()
+       
 
     def establish_conn(self):
         packet = Packet(
@@ -163,9 +162,7 @@ class RUDP:
         pass
     
     def listen_helper(self):
-        """
-        recv_window.append((seq_num, packet.data))
-        """
+        
         if self.sock == None:
             raise Exception("Socket not created")
 
@@ -184,7 +181,6 @@ class RUDP:
             finally:
                 self.receive_lock.release()
             data_received = data
-            # print("Client at : ", addr)
             data_received = pickle.loads(data_received)
             # updates the latest packet time for use in the keep-alive fx
             self.latest_packet_time = time.time()
@@ -210,24 +206,17 @@ class RUDP:
                 print("# packets in buffer: ", len(self.send_window))
                 ack_count += 1
                 ack_map.add(data_received["ACKNUM"])
-                # print("Printing Ack Map:", ack_map)
                 if ack_count >= (0):
 
                     ack_count = 0
                     temp_sent_buffer = []
-                    # print("reached here !!!")
                     self.transmit_lock.acquire()
                     try:
-                        # print("listening thread aquired lock :", self.send_window)
-                        for send_window_item in self.send_window:
-                            # print("Check this out",
-                            #       send_window_item["packet"].seqNum)
+                        for send_window_item in self.send_window:    
                             if send_window_item["packet"].seqNum not in ack_map:
                                 temp_sent_buffer.append(send_window_item)
                         self.send_window = temp_sent_buffer
-                        # print("The send window is :", self.send_window)
                         ack_map = set()
-                        # print("The ack map is :", ack_map)
                     finally:
                         self.transmit_lock.release()
             elif data_received["NAK"] == 1:
@@ -267,7 +256,6 @@ class RUDP:
                     print("Inconsistent data")
                     continue
                 if ((len(self.recv_window) < self.WINDOWSZ) or self.recv_map.get(data_received["seqNum"]) != None):
-                    # print("sending ack for :", data_received["seqNum"])
                     s = data_received["seqNum"]
                     packet = Packet(
                         control_bits={"SYN": 1 if (data_received["SYN"] == 1 and data_received["ACK"] == 0) else 0, "ACK": 1, "ACKNUM": s, "FIN": 0, "CHK": 1 if (data_received["SYN"] == 1 and data_received["ACK"] == 0) else 0, "KAL": 0, "NAK": 0},
@@ -286,14 +274,12 @@ class RUDP:
     def read_from_sock(self):
         if len(self.recv_window) > 0:
             data = min(self.recv_window)
-            # print(data[0])
             if data[0] == self.delivery_seq or data[0] == 0:
                 print("packet to application: ", data[0])
                 if(data[0]!=0):
                     with self.delivery_seq_lock:
                         self.delivery_seq += 1
                 self.recv_window.remove(data)
-                # removing header information before forwarding data to application
                 if(data[0] == 0):
                     print("reading from sock")
                     return None
@@ -302,7 +288,6 @@ class RUDP:
             else:
                 return None
         else:
-            # print("didnt find anything in receive window")
             return None
 
     def recv(self):
@@ -312,7 +297,6 @@ class RUDP:
             data = self.read_from_sock()
             if data != None:
                 data = deepcopy(data)
-                # print("Trying to receive")
                 return data
             time.sleep(self.BLOCKING_TIME)
 
@@ -339,18 +323,6 @@ class RUDP:
         finally:
             self.send_lock.release()
 
-    # def recv(self, blocking=True):
-    #     if blocking == True:
-    #         while True:
-    #             data = self.__read_socket()
-    #             if data != None:
-    #                 data = deepcopy(data)
-    #                 return data
-    #             time.sleep(FSSP.BLOCKING_SLEEP)
-    #     else:
-    #         data = self.__read_socket()
-    #         data = deepcopy(data)
-    #         return data
 
     def send(self, data, control_bits={"SYN": 0, "ACK": 0, "ACKNUM": 0, "FIN": 0, "CHK": 1, "KAL": 0, "NAK": 0}):
         while True:
@@ -363,7 +335,7 @@ class RUDP:
                 time.sleep(self.BLOCKING_TIME)
 
         seq = self.get_next_seq()
-        # if user modify the object, the shouldn't be changed
+        # dont change packet if user modifies
         data_copy = deepcopy(data)
         packet = Packet(data=data_copy, control_bits=control_bits, seqNum=seq)
         self.write_to_sock(packet)
